@@ -9,7 +9,7 @@
 	"inRepository": true,
 	"translatorType": 4,
 	"browserSupport": "gcsib",
-	"lastUpdated": "2013-05-15 03:43:29"
+	"lastUpdated": "2013-09-27 02:05:56"
 }
 
 /**
@@ -421,8 +421,8 @@ function getMultipleNodes(doc, url) {
 			//archive (e.g. http://www.nature.com/bonekey/archive/type.html)
 			{
 				'nodex': '//table[@class="archive"]/tbody/tr',
-				'titlex': './td/hgroup/' + allHNodes + '[last()]/a',
-				'linkx': './td/hgroup/' + allHNodes + '[last()]/a',
+				'titlex': './td/' + allHNodes + '[last()]/a',
+				'linkx': './td/' + allHNodes + '[last()]/a',
 			},
 			//some more ToC (e.g. http://www.nature.com/nrcardio/journal/v5/n1s/index.html)
 			{
@@ -534,6 +534,7 @@ function scrape(doc, url) {
 			for(var i=0, j=0, n=item.creators.length, m=items[1].creators.length; i<n && j<m; i++, j++) {
 				//check if last names match, then we don't need to worry
 				var risLName = ZU.removeDiacritics(items[1].creators[j].lastName.toUpperCase());
+				
 				var emLName = ZU.removeDiacritics(item.creators[i].lastName.toUpperCase());
 				if(emLName == risLName) {
 					continue;
@@ -558,6 +559,18 @@ function scrape(doc, url) {
 							j--;
 							Z.debug('It appears that "' + item.creators[i].lastName
 								+ '" is a corporate author and was skipped in the RIS output.');
+							continue;
+						}
+					}
+					
+					//authors with same name are sometimes skipped in EM
+					if(j+1<m) {
+						var nextRisLName = ZU.removeDiacritics(items[1].creators[j+1].lastName.toUpperCase());
+						var resplitEmLName = ZU.removeDiacritics(fullName.substring(fullName.length - nextRisLName.length).toUpperCase());
+						if(resplitEmLName == nextRisLName) {
+							item.creators.splice(i, 0, items[1].creators[j]); //insert missing author
+							Z.debug('It appears that "' + item.creators[i].lastName
+								+ '" was missing from EM.');
 							continue;
 						}
 					}
@@ -1064,8 +1077,8 @@ var testCases = [
 						"creatorType": "author"
 					},
 					{
-						"firstName": "Y.",
 						"lastName": "Zhang",
+						"firstName": "Y",
 						"creatorType": "author"
 					},
 					{
@@ -1086,11 +1099,18 @@ var testCases = [
 				],
 				"notes": [],
 				"tags": [
-					"CD90",
-					"ERBB2",
-					"cancer stem cells",
-					"gastric cancer",
-					"trastuzumab (herceptin)"
+					"ONC",
+					"apoptosis",
+					"apoptosis",
+					"cancer",
+					"cell cycle",
+					"growth factor receptors",
+					"growth factors",
+					"growth regulatory genes",
+					"molecular oncology",
+					"oncogenes",
+					"tumor suppressor genes",
+					"tumor viruses"
 				],
 				"seeAlso": [],
 				"attachments": [
@@ -1106,8 +1126,8 @@ var testCases = [
 				"issue": "6",
 				"language": "en",
 				"DOI": "10.1038/onc.2011.282",
-				"abstractNote": "Identification and characterization of cancer stem cells (CSCs) in gastric cancer are difficult owing to the lack of specific markers and consensus methods. In this study, we show that cells with the CD90 surface marker in gastric tumors could be enriched under non-adherent, serum-free and sphere-forming conditions. These CD90+ cells possess a higher ability to initiate tumor in vivo and could re-establish the cellular hierarchy of tumors from single-cell implantation, demonstrating their self-renewal properties. Interestingly, higher proportion of CD90+ cells correlates with higher in vivo tumorigenicity of gastric primary tumor models. In addition, it was found that ERBB2 was overexpressed in about 25% of the gastric primary tumor models, which correlates with the higher level of CD90 expression in these tumors. Trastuzumab (humanized anti-ERBB2 antibody) treatment of high-tumorigenic gastric primary tumor models could reduce the CD90+ population in tumor mass and suppress tumor growth when combined with traditional chemotherapy. Moreover, tumorigenicity of tumor cells could also be suppressed when trastuzumab treatment starts at the same time as cell implantation. Therefore, we have identified a CSC population in gastric primary tumors characterized by their CD90 phenotype. The finding that trastuzumab targets the CSC population in gastric tumors suggests that ERBB2 signaling has a role in maintaining CSC populations, thus contributing to carcinogenesis and tumor invasion. In conclusion, the results from this study provide new insights into the gastric tumorigenic process and offer potential implications for the development of anticancer drugs as well as therapeutic treatment of gastric cancers.",
 				"url": "http://www.nature.com/onc/journal/v31/n6/full/onc2011282a.html",
+				"abstractNote": "Identification and characterization of cancer stem cells (CSCs) in gastric cancer are difficult owing to the lack of specific markers and consensus methods. In this study, we show that cells with the CD90 surface marker in gastric tumors could be enriched under non-adherent, serum-free and sphere-forming conditions. These CD90+ cells possess a higher ability to initiate tumor in vivo and could re-establish the cellular hierarchy of tumors from single-cell implantation, demonstrating their self-renewal properties. Interestingly, higher proportion of CD90+ cells correlates with higher in vivo tumorigenicity of gastric primary tumor models. In addition, it was found that ERBB2 was overexpressed in about 25% of the gastric primary tumor models, which correlates with the higher level of CD90 expression in these tumors. Trastuzumab (humanized anti-ERBB2 antibody) treatment of high-tumorigenic gastric primary tumor models could reduce the CD90+ population in tumor mass and suppress tumor growth when combined with traditional chemotherapy. Moreover, tumorigenicity of tumor cells could also be suppressed when trastuzumab treatment starts at the same time as cell implantation. Therefore, we have identified a CSC population in gastric primary tumors characterized by their CD90 phenotype. The finding that trastuzumab targets the CSC population in gastric tumors suggests that ERBB2 signaling has a role in maintaining CSC populations, thus contributing to carcinogenesis and tumor invasion. In conclusion, the results from this study provide new insights into the gastric tumorigenic process and offer potential implications for the development of anticancer drugs as well as therapeutic treatment of gastric cancers.",
 				"libraryCatalog": "www.nature.com",
 				"journalAbbreviation": "Oncogene",
 				"ISSN": "0950-9232",
@@ -1286,7 +1306,8 @@ var testCases = [
 				],
 				"notes": [],
 				"tags": [
-					"Astronomy"
+					"Astronomy",
+					"Astrophysics"
 				],
 				"seeAlso": [],
 				"attachments": [
@@ -1298,20 +1319,26 @@ var testCases = [
 						"mimeType": "application/pdf"
 					}
 				],
+				"title": "Gravitational detection of a low-mass dark satellite galaxy at cosmological distance",
+				"publicationTitle": "Nature",
 				"rights": "© 2012 Nature Publishing Group, a division of Macmillan Publishers Limited. All Rights Reserved.",
+				"volume": "481",
+				"pages": "341-343",
+				"publisher": "Nature Publishing Group",
+				"institution": "Nature Publishing Group",
+				"company": "Nature Publishing Group",
+				"label": "Nature Publishing Group",
+				"distributor": "Nature Publishing Group",
+				"date": "January 19, 2012",
 				"language": "en",
 				"issue": "7381",
 				"DOI": "10.1038/nature10669",
-				"abstractNote": "The mass function of dwarf satellite galaxies that are observed around Local Group galaxies differs substantially from simulations based on cold dark matter: the simulations predict many more dwarf galaxies than are seen. The Local Group, however, may be anomalous in this regard. A massive dark satellite in an early-type lens galaxy at a redshift of 0.222 was recently found using a method based on gravitational lensing, suggesting that the mass fraction contained in substructure could be higher than is predicted from simulations. The lack of very low-mass detections, however, prohibited any constraint on their mass function. Here we report the presence of a (1.9 ± 0.1) × 108nature10669-m1jpg19K2716 dark satellite galaxy in the Einstein ring system JVAS B1938+666 (ref. 11) at a redshift of 0.881, where nature10669-m2jpg20K2716 denotes the solar mass. This satellite galaxy has a mass similar to that of the Sagittarius galaxy, which is a satellite of the Milky Way. We determine the logarithmic slope of the mass function for substructure beyond the local Universe to be nature10669-m3jpg21K4620, with an average mass fraction of nature10669-m4jpg21K4820 per cent, by combining data on both of these recently discovered galaxies. Our results are consistent with the predictions from cold dark matter simulations at the 95 per cent confidence level, and therefore agree with the view that galaxies formed hierarchically in a Universe composed of cold dark matter.",
 				"url": "http://www.nature.com/nature/journal/v481/n7381/full/nature10669.html",
+				"abstractNote": "The mass function of dwarf satellite galaxies that are observed around Local Group galaxies differs substantially from simulations based on cold dark matter: the simulations predict many more dwarf galaxies than are seen. The Local Group, however, may be anomalous in this regard. A massive dark satellite in an early-type lens galaxy at a redshift of 0.222 was recently found using a method based on gravitational lensing, suggesting that the mass fraction contained in substructure could be higher than is predicted from simulations. The lack of very low-mass detections, however, prohibited any constraint on their mass function. Here we report the presence of a (1.9 ± 0.1) × 108nature10669-m1jpg19K2716 dark satellite galaxy in the Einstein ring system JVAS B1938+666 (ref. 11) at a redshift of 0.881, where nature10669-m2jpg20K2716 denotes the solar mass. This satellite galaxy has a mass similar to that of the Sagittarius galaxy, which is a satellite of the Milky Way. We determine the logarithmic slope of the mass function for substructure beyond the local Universe to be nature10669-m3jpg21K4620, with an average mass fraction of nature10669-m4jpg21K4820 per cent, by combining data on both of these recently discovered galaxies. Our results are consistent with the predictions from cold dark matter simulations at the 95 per cent confidence level, and therefore agree with the view that galaxies formed hierarchically in a Universe composed of cold dark matter.",
 				"libraryCatalog": "www.nature.com",
+				"accessDate": "CURRENT_TIMESTAMP",
 				"journalAbbreviation": "Nature",
-				"ISSN": "0028-0836",
-				"title": "Gravitational detection of a low-mass dark satellite galaxy at cosmological distance",
-				"publicationTitle": "Nature",
-				"volume": "481",
-				"pages": "341-343",
-				"date": "January 19, 2012"
+				"ISSN": "0028-0836"
 			}
 		]
 	},

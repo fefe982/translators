@@ -9,7 +9,7 @@
 	"inRepository": true,
 	"translatorType": 4,
 	"browserSupport": "gcsibv",
-	"lastUpdated": "2013-08-04 07:01:16"
+	"lastUpdated": "2013-09-23 04:28:34"
 }
 
 /*
@@ -90,7 +90,8 @@ var _prefixes = {
 	eprints:"http://purl.org/eprint/terms/",
 	og:"http://ogp.me/ns#",				// Used for Facebook's OpenGraph Protocol
 	article:"http://ogp.me/ns/article#",
-	book:"http://ogp.me/ns/book#"
+	book:"http://ogp.me/ns/book#",
+	rdf:"http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 };
 
 var _prefixRemap = {
@@ -130,10 +131,22 @@ function getPrefixes(doc) {
 		if(rel) {
 			var matches = rel.match(/^schema\.([a-zA-Z]+)/);
 			if(matches) {
-				//Zotero.debug("Prefix '" + matches[1].toLowerCase() +"' => '" + links[i].getAttribute("href") + "'");
-				_prefixes[matches[1].toLowerCase()] = remapPrefix(link.getAttribute("href"));
+				var uri = remapPrefix(link.getAttribute("href"));
+				//Zotero.debug("Prefix '" + matches[1].toLowerCase() +"' => '" + uri + "'");
+				_prefixes[matches[1].toLowerCase()] = uri;
 			}
 		}
+	}
+	
+	//also look in html and head elements
+	var prefixes = (doc.documentElement.getAttribute('prefix') || '')
+		+ (doc.head.getAttribute('prefix') || '');
+	var prefixRE = /(\w+):\s+(\S+)/g;
+	var m;
+	while(m = prefixRE.exec(prefixes)) {
+		var uri = remapPrefix(m[2]);
+		Z.debug("Prefix '" + m[1].toLowerCase() +"' => '" + uri + "'");
+		_prefixes[m[1].toLowerCase()] = uri;
 	}
 }
 
@@ -218,47 +231,59 @@ function init(doc, url, callback, forceLoadRDF) {
 		//	<meta property="..." content="..." />
 		// The first is more common; the second is recommended by Facebook
 		// for their OpenGraph vocabulary
-		var tag = metaTag.getAttribute("name");
-		if (!tag) tag = metaTag.getAttribute("property");
+		var tags = metaTag.getAttribute("name");
+		if (!tags) tags = metaTag.getAttribute("property");
 		var value = metaTag.getAttribute("content");
-		if(!tag || !value) continue;
+		if(!tags || !value) continue;
 
-		// We allow three delimiters between the namespace and the property
-		var delimIndex = tag.indexOf('.');
-		if(delimIndex === -1) delimIndex = tag.indexOf(':');
-		if(delimIndex === -1) delimIndex = tag.indexOf('_');
-		if(delimIndex === -1) continue;
+		tags = tags.split(/\s+/);
+		for(var j=0, m=tags.length; j<m; j++) {
+			var tag = tags[j];
+			// We allow three delimiters between the namespace and the property
+			var delimIndex = tag.indexOf('.');
+			if(delimIndex === -1) delimIndex = tag.indexOf(':');
+			if(delimIndex === -1) delimIndex = tag.indexOf('_');
+			if(delimIndex === -1) continue;
 
-		var prefix = tag.substr(0, delimIndex).toLowerCase();
+			var prefix = tag.substr(0, delimIndex).toLowerCase();
 
-		if(_prefixes[prefix]) {
-			var prop = tag.substr(delimIndex+1, 1).toLowerCase()+tag.substr(delimIndex+2);
-			// This debug is for seeing what is being sent to RDF
-			//Zotero.debug(_prefixes[prefix]+prop +"=>"+value);
-			statements.push([url, _prefixes[prefix]+prop, value]);
-		} else {
-			var shortTag = tag.slice(tag.lastIndexOf('citation_'));
-			switch(shortTag) {
-				case "citation_journal_title":
-					hwType = "journalArticle";
-					break;
-				case "citation_technical_report_institution":
-					hwType = "report";
-					break;
-				case "citation_conference_title":
-				case "citation_conference":
-					hwType = "conferencePaper";
-					break;
-				case "citation_book_title":
-					hwType = "bookSection";
-					break;
-				case "citation_dissertation_institution":
-					hwType = "thesis";
-					break;
-				case "citation_title":		//fall back to journalArticle, since this is quite common
-				case "citation_series_title":	//possibly journal article, though it could be book
-					hwTypeGuess = "journalArticle";
-					break;
+			if(_prefixes[prefix]) {
+				var prop = tag.substr(delimIndex+1, 1).toLowerCase()+tag.substr(delimIndex+2);
+				
+				//bib and bibo types are special, they use rdf:type to define type
+				var specialNS = [_prefixes['bib'], _prefixes['bibo']];
+				if(prop == 'type' && specialNS.indexOf(_prefixes[prefix]) != -1) {
+					value = _prefixes[prefix] + value;
+					prefix = 'rdf';
+				}
+				
+				// This debug is for seeing what is being sent to RDF
+				//Zotero.debug(_prefixes[prefix]+prop +"=>"+value);
+				statements.push([url, _prefixes[prefix]+prop, value]);
+			} else {
+				var shortTag = tag.slice(tag.lastIndexOf('citation_'));
+				switch(shortTag) {
+					case "citation_journal_title":
+						hwType = "journalArticle";
+						break;
+					case "citation_technical_report_institution":
+						hwType = "report";
+						break;
+					case "citation_conference_title":
+					case "citation_conference":
+						hwType = "conferencePaper";
+						break;
+					case "citation_book_title":
+						hwType = "bookSection";
+						break;
+					case "citation_dissertation_institution":
+						hwType = "thesis";
+						break;
+					case "citation_title":		//fall back to journalArticle, since this is quite common
+					case "citation_series_title":	//possibly journal article, though it could be book
+						hwTypeGuess = "journalArticle";
+						break;
+				}
 			}
 		}
 	}
