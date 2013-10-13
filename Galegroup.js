@@ -9,7 +9,7 @@
 	"inRepository": true,
 	"translatorType": 4,
 	"browserSupport": "gcsib",
-	"lastUpdated": "2013-10-02 11:34:11"
+	"lastUpdated": "2013-10-05 13:47:51"
 }
 
 /*
@@ -38,6 +38,38 @@ function getSearchResults(doc) {
 	var results = ZU.xpath(doc, '//*[@id="SearchResults"]//section[@class="resultsBody"]/ul/li');
 	if(results.length) {
 		results.linkXPath = './p[@class="subTitle"]/a';
+		Z.debug("Using GVRL");
+		composeAttachment = composeAttachmentGVRL;
+		composeRisUrl = composeRisUrlGVRL;
+		return results;
+	}
+	
+	//Academic OneFile
+	//Academic ASAP
+	results = ZU.xpath(doc, '//div[@id="resultsBox"]//li[@class="resrow"]');
+	if(results.length) {
+		results.linkXPath = './/div[@class="pic_Title"]/a';
+		Z.debug("Academic, but using GVRL");
+		composeAttachment = composeAttachmentGVRL;
+		composeRisUrl = composeRisUrlGVRL;
+		return results;
+	}
+	
+	//LegalTrac
+	results = ZU.xpath(doc, '//*[@id="sr_ul"]/li');
+	if(results.length) {
+		results.linkXPath = './/span[@class="title"]/a';
+		Z.debug("LegalTrac, but using GVRL");
+		composeAttachment = composeAttachmentGVRL;
+		composeRisUrl = composeRisUrlGVRL;
+		return results;
+	}
+	
+	//Literature Resource Center
+	results = ZU.xpath(doc, '//div[@id="resultsTable"]/div');
+	if(results.length) {
+		results.linkXPath = './/span[@class="title"]/a';
+		Z.debug("LRC, but using GVRL");
 		composeAttachment = composeAttachmentGVRL;
 		composeRisUrl = composeRisUrlGVRL;
 		return results;
@@ -47,10 +79,37 @@ function getSearchResults(doc) {
 	results = ZU.xpath(doc, '//*[@id="results_list"]/div[contains(@class,"resultList")]');
 	if(results.length) {
 		results.linkXPath = './div[@class="pub_details"]//li[@class="resultInfo"]/p//a';
+		Z.debug("Using GNV");
 		composeAttachment = composeAttachmentGNV;
 		composeRisUrl = composeRisUrlGNV;
 		return results;
 	}
+	
+	/** TODO: **/
+//	//19th century UK periodicals
+//	results = ZU.xpath(doc, '//*[@id="content"]//table[@class="resultstable"]//tr[@class="selectedRow" or @class="unselectedRow"]');
+//	if(results.length) {
+//		results.linkXPath = './/b/a[contains(@href, "retrieve.do")]';
+//		composeAttachment = composeAttachmentUKPC;
+//		composeRisUrl = composeRisUrlUKPC;
+//		return results;
+//	}
+
+	//Declassified Documents Reference System
+	
+	//"Full Citation" metadata:
+	//  The Making of Modern Law (multiple)
+	//  Sabin Americana 1500-1926
+	
+	//British Newspapers
+	//Burney Collection Newspapers
+	
+	//Eighteenth Cnetury Collection Online
+	//  works, but no PDFs
+	
+	//Biography in Context
+	
+	//Old InfoTrac ?? (various)
 	
 	return [];
 }
@@ -89,9 +148,9 @@ function composeRisUrlGVRL(url) {
 var composeAttachment;
 
 function composeAttachmentGVRL(doc, url) {
-	var pdf = !!doc.getElementById('pdfLink');
+	var pdf = !!(doc.getElementById('pdfLink') || doc.getElementById('docTools-pdf'));
 	var attachment = ZU.xpath(doc, '//*[@id="docTools-download"]/a[./@href]')[0];
-	if(attachment && pdf /* currently pops up a download dialog for HTML attachments */) {
+	if(attachment && pdf /* HTML currently pops up a download dialog for HTML attachments */) {
 		url = attachment.href;
 		return {
 			url: url.replace(/#.*/, '').replace(/\/[^\/?]+(?=\?|$)/, '/downloadDocument.do')
@@ -122,22 +181,17 @@ function composeAttachmentGNV(doc, url) {
 function parseRis(text, attachment) {
 	text = text.trim();
 	//gale puts issue numbers in M1
-	text = text.replace(/M1\s*\-/, "IS  -");
-
+	text = text.replace(/M1\s*\-/g, "IS  -");
+	//L2 is probably meant to be UR, but we can ignore it altogether
+	text = text.replace(/^L2\s+-.+\n/gm, '');
+	//we can map copyright notes via CR
+	text = text.replace(/^N1(?=\s+-\s+copyright)/igm, 'CR');
+	//Z.debug(text);
+	
 	var translator = Zotero.loadTranslator("import");
 	translator.setTranslator("32d59d2d-b65a-4da4-b0a3-bdd3cfb979e7");
 	translator.setString(text);
 	translator.setHandler("itemDone", function (obj, item) {
-		//move copyright info from note to rights
-		for(var i=0, n=item.notes.length; i<n; i++) {
-			if(item.notes[i].note.indexOf("COPYRIGHT") != -1) {
-				item.rights = ZU.cleanTags(item.notes[i].note);
-				delete item.notes[i];
-				i--;
-				n--;
-			}
-		}
-		
 		if(attachment) item.attachments.push(attachment);
 		item.complete();
 	});
@@ -183,9 +237,11 @@ function doWeb(doc, url) {
 		});
 	} else {
 		if(doc.title.indexOf('NewsVault') != -1) {
+			Z.debug("Using GNV");
 			composeAttachment = composeAttachmentGNV;
 			composeRisUrl = composeRisUrlGNV;
 		} else {
+			Z.debug("Using GVRL");
 			composeAttachment = composeAttachmentGVRL;
 			composeRisUrl = composeRisUrlGVRL;
 		}
